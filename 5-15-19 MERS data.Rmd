@@ -1,0 +1,186 @@
+---
+title: "5-15-19 MERS data"
+author: "Megan Beaudry"
+date: "May 15, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r echo=F}
+##this first one is a setup code chunck, ECHO = true means you will include
+####all the code for the people
+##ECHO is to hide or show all the code
+#it will always default to waht you see at the top
+##after you make a data chunck,  you need to name the data chunk with each round of R code
+```
+
+
+
+
+#**INTRODUCTION**
+A data set on Middle East Respiratory Sydrome Corona Virus (MERS-CoV), and that has been made available by Andrw Rambaut, was utilized to practice technqiues in R studio. As such, this document contains various practce plots. 
+
+#**MATERIALS AND METHODS**
+This project used R-studio for statistical analysis. 
+
+#STEP ONE: Load Libaries
+```{r load libraries}
+library(lubridate)
+library(ggplot2)
+library(plotly)
+```
+
+
+##STEP TWO: Functions
+No functions were used in this analysis of the MERS-CoV data.
+
+
+##STEP THREE: Data Loading
+```{r load the data}
+setwd('C:/Users/msb75462/Desktop/mers')
+mers<-read.csv('cases.csv')
+```
+
+
+
+#STEP FOUR: Data Analysis
+```{r Renaming and Formatting Table}
+
+mers$hospitalized[890]<-c('2015-02-20')
+
+mers<-mers[-471,]
+
+mers$hospitalized2<-ymd(mers$hospitalized)
+
+mers$onset2<-ymd(mers$onset)
+
+class(mers$onset2)
+
+day0<-min(na.omit(mers$onset2))
+
+mers$epi.day<-as.numeric(mers$onset2-day0)
+```
+
+Endimic curves
+```{r Endimic Curve by Country}
+ggplot(data=mers) +
+  geom_bar(mapping=aes(x=epi.day, fill=country)) +
+  labs(x='Epidemic day', y='Case count', title='Global count of MERS cases by date of symptom onset',
+       caption="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+```
+This plots shows us the Global count of MERS cases by date with a legend of countries on the side.
+
+
+```{r Endimic Curve by Gender}
+ggplot(data=mers) +
+  geom_bar(mapping=aes(x=epi.day, fill=gender)) +
+  labs(x='Epidemic day', y='Case count', title='Global count of MERS cases by date of symptom onset',
+       caption="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+```
+This plots shows us the Global count of MERS cases by date with a legend coordiateing to the male and female genders on the side.
+
+
+Univariate Plot
+
+```{r Raw Infectious Period}
+mers$infectious.period <- mers$hospitalized2-mers$onset2
+```
+This is the raw infectious period. 
+
+
+Histogram
+
+```{r Histogram}
+class(mers$infectious.period)
+mers$infectious.period <- as.numeric(mers$infectious.period, units = "days")
+ggplot(data=mers) +geom_histogram(aes(x=infectious.period)) +
+  labs(x='Infectious period', y='Frequency', title='Distribution of calculated MERS infectious period',
+       caption="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+```
+
+
+Nonsocimal Infection
+```{r nonsocimal infection}
+mers$infectious.period2 <- ifelse(mers$infectious.period<0,0,mers$infectious.period)
+ggplot(data=mers) + geom_histogram(aes(x=infectious.period2)) +
+  labs(x='Infectious period', y='Frequency', title='Distribution of calculated MERS infectious period',
+      caption="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+```
+This is an updated infectious period as this is a nonsocimal infection.
+
+Density Plot
+```{r}
+ggplot(data=mers) +
+  geom_density(mapping=aes(x=infectious.period2)) +
+  labs(x='Infectious period', y='Frequency',
+       title='Probability density for MERS infectious period (positive values only)', caption ="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+```
+
+
+       
+Area Plot
+```{r Area Plot}
+ggplot(data=mers) +
+  geom_area(stat='bin', mapping=aes(x=infectious.period2)) +
+  labs(x='Infectious period', y='Frequency',
+       title='Area plot for MERS infectious period (positive values only)', caption ="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+```
+
+
+
+Bivariate Plot
+
+```{r Bivariate Plot}
+ggplot(data=mers, mapping=aes(x=epi.day, y=infectious.period2)) +
+  geom_smooth()+
+  geom_point() +
+  labs(x='Epidemic day', y='Infectious period',
+       title='MERS infectious period (positive values only) over time', caption="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+```
+
+
+
+Faceting - Multipanel Plot
+
+```{r Faceting}
+ggplot(data=mers, mapping=aes(x=epi.day, y=infectious.period2)) +
+  geom_point(mapping = aes(color=country)) +
+  facet_wrap(~ country) +
+  scale_y_continuous(limits = c(0, 50)) +
+  labs(x='Epidemic day', y='Infectious period',
+  title='MERS infectious period (positive values only) over time', caption="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+```
+
+Seperate Plots for Male and Female 
+
+```{r facet male and female}
+ggplot(data=subset(mers, gender %in% c('M', 'F') &
+                     country %in% c('KSA', 'Oman', 'Iran', 'Jordan', 'Qatar', 'South Korea','UAE')),
+       mapping=aes(x=epi.day, y=infectious.period2)) +
+  geom_point(mapping = aes(color=country)) +
+  facet_grid(gender ~ country) +
+  scale_y_continuous(limits = c(0, 50)) +
+  labs(x='Epidemic day', y='Infectious period',
+       title='MERS infectious period by gender and country',
+       caption="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+```
+
+Interactive Plot
+```{r PLotly}
+epi.curve <- ggplot(data=mers) +
+geom_bar(mapping=aes(x=epi.day)) +
+labs(x='Epidemic day', y='Case count', title='Global count of MERS cases by date of symptom onset',
+caption="Data from: https://github.com/rambaut/MERS-Cases/blob/gh-pages/data/cases.csv")
+ggplotly(epi.curve)
+```
+
+
+#**Results**
+This study reflected.........
+
+#**Conclusion**
+
